@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.venv/
+# Large data + artifacts are not committed; document how to regenerate instead.
+data/candidates.jsonl
+data/candidates.jsonl.gz
+artifacts/*.npy
+*.csv
+!sample_submission.csv

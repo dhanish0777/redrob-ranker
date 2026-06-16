@@ -1,0 +1,6 @@
+# Ranking step dependencies (kept minimal for the 5-min CPU budget & reproducibility)
+numpy>=1.24
+# Semantic layer (added in Phase 3). Embeddings are PRE-COMPUTED offline into an
+# artifact; the ranking step only loads numpy arrays, so sentence-transformers
+# is NOT imported during ranking. Listed here for the offline precompute script.
+sentence-transformers>=2.2 ; extra == "precompute"

@@ -1,0 +1,32 @@
+# Redrob Hackathon — Intelligent Candidate Discovery & Ranking
+
+Ranks the top-100 candidates from `candidates.jsonl(.gz)` against the
+"Senior AI Engineer — Founding Team" job description, with explainable reasoning.
+
+## Why this is not a pure-embedding system
+The dataset is built so keyword/embedding-only approaches fail: keyword-stuffers
+and ~80 impossible "honeypot" profiles would rank high. We use a **hybrid,
+mostly-deterministic scorer** that reads profiles structurally (title & career
+trajectory dominate), trust-weights skills, applies a behavioral-availability
+modifier, hard-penalizes the JD's explicit disqualifiers, and uses a small
+local embedding model only as a "plain-language fit" catcher.
+
+## Layout
+- `src/loader.py`   — load the pool (.json / .jsonl / .jsonl.gz), stdlib only
+- `src/honeypots.py`— high-precision profile-consistency / honeypot detector
+- `src/eda.py`      — characterize the full pool; sanity-check honeypot rate
+- `tests/`          — precision/recall tests for the detector
+- (coming) `src/features.py`, `src/score.py`, `src/reason.py`, `rank.py`
+
+## Reproduce (final)
+```
+python rank.py --candidates ./data/candidates.jsonl.gz --out ./submission.csv
+python validate_submission.py submission.csv
+```
+
+## Status
+- [x] Phase 0–1: loader, honeypot detector (0 FP on sample, catches synthetic), EDA
+- [ ] Phase 2: deterministic core scorer
+- [ ] Phase 3: semantic layer + weight tuning vs local gold set
+- [ ] Phase 4: reasoning generation
+- [ ] Phase 5: reproducibility + sandbox
