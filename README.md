@@ -26,7 +26,7 @@ python validate_submission.py submission.csv
 
 ## Status
 - [x] Phase 0–1: loader, honeypot detector (0 FP on sample, catches synthetic), EDA
-- [ ] Phase 2: deterministic core scorer
+- [x] Phase 2: deterministic core scorer (features, score, reason, rank.py) -> valid CSV
 - [ ] Phase 3: semantic layer + weight tuning vs local gold set
 - [ ] Phase 4: reasoning generation
 - [ ] Phase 5: reproducibility + sandbox
