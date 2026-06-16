@@ -157,6 +157,19 @@ def behavioral_modifier(cand: dict) -> float:
     # Profile completeness (light).
     pc = sig.get("profile_completeness_score", 0) or 0
     m *= 0.92 + 0.08 * min(1.0, pc / 100.0)
+    # Notice period (JD: sub-30 ideal, buyout up to 30, "30+ ... bar gets
+    # higher"). Mild monotonic down-weight -- a soft availability signal, not
+    # a disqualifier, so the steps are gentle.
+    np = sig.get("notice_period_days")
+    if isinstance(np, (int, float)):
+        if np <= 30:
+            m *= 1.0
+        elif np <= 60:
+            m *= 0.97
+        elif np <= 90:
+            m *= 0.93
+        else:
+            m *= 0.88
     return max(0.4, min(1.15, m))
 
 
