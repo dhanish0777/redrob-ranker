@@ -28,17 +28,32 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "src
 from loader import load_candidates, default_candidate_path  # noqa: E402
 from score import score_candidate  # noqa: E402
 from reason import make_reasoning  # noqa: E402
+from semantic import SemanticIndex, blend  # noqa: E402
 
 TOP_N = 100
 SCORE_DECIMALS = 6
+SEMANTIC_ALPHA = 0.15
 
 
-def rank(candidates_path: str, out_path: str, top_n: int = TOP_N) -> None:
+def rank(candidates_path: str, out_path: str, top_n: int = TOP_N,
+         alpha: float = SEMANTIC_ALPHA) -> None:
     t0 = time.time()
     cands = load_candidates(candidates_path)
     by_id = {c["candidate_id"]: c for c in cands}
 
     scored = [score_candidate(c) for c in cands]
+
+    # Optional semantic re-ranking pass (active only if artifacts precomputed).
+    sem = SemanticIndex()
+    if sem.is_available():
+        for s in scored:
+            s["sem_pct"] = sem.percentile(s["candidate_id"])
+            # Honeypots stay crushed -- don't let semantics rescue them.
+            if not s["is_honeypot"]:
+                s["score"] = blend(s["score"], s["sem_pct"], alpha)
+        print(f"Semantic re-ranking ACTIVE (alpha={alpha})")
+    else:
+        print("Semantic re-ranking inactive (no artifacts) -- deterministic only")
 
     # Round scores BEFORE tie-breaking so the validator's "equal score ->
     # ascending candidate_id" rule always holds.
@@ -71,8 +86,10 @@ def main():
                     help="Path to candidates.jsonl(.gz) or sample json")
     ap.add_argument("--out", default="submission.csv", help="Output CSV path")
     ap.add_argument("--top", type=int, default=TOP_N)
+    ap.add_argument("--alpha", type=float, default=SEMANTIC_ALPHA,
+                    help="Semantic blend strength (0 disables the nudge)")
     args = ap.parse_args()
-    rank(args.candidates, args.out, args.top)
+    rank(args.candidates, args.out, args.top, args.alpha)
 
 
 if __name__ == "__main__":

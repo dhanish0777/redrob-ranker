@@ -18,15 +18,27 @@ local embedding model only as a "plain-language fit" catcher.
 - `tests/`          — precision/recall tests for the detector
 - (coming) `src/features.py`, `src/score.py`, `src/reason.py`, `rank.py`
 
-## Reproduce (final)
+## Reproduce
+
+Optional one-time OFFLINE precompute of semantic embeddings (improves top-band
+ordering; ranking still works without it):
 ```
-python rank.py --candidates ./data/candidates.jsonl.gz --out ./submission.csv
+pip install sentence-transformers
+python src/precompute_embeddings.py --candidates ./data/candidates.jsonl
+```
+
+Ranking step (the single reproduce command; offline, CPU-only, <5 min):
+```
+python rank.py --candidates ./data/candidates.jsonl --out ./submission.csv
 python validate_submission.py submission.csv
 ```
+If the embedding artifacts are absent, rank.py automatically runs the pure
+deterministic system (still valid + honeypot-clean).
 
 ## Status
 - [x] Phase 0–1: loader, honeypot detector (0 FP on sample, catches synthetic), EDA
 - [x] Phase 2: deterministic core scorer (features, score, reason, rank.py) -> valid CSV
-- [~] Phase 3: invariant eval harness + notice-period factor (done); semantic layer next
+- [x] Phase 3: invariant harness, notice-period factor, semantic re-ranking (precompute + optional blend)
+- [ ] Phase 4: reasoning polish | Phase 5: sandbox + repro hardening
 - [ ] Phase 4: reasoning generation
 - [ ] Phase 5: reproducibility + sandbox
