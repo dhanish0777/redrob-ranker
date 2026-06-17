@@ -1,44 +1,82 @@
 # Redrob Hackathon — Intelligent Candidate Discovery & Ranking
 
-Ranks the top-100 candidates from `candidates.jsonl(.gz)` against the
+Ranks the top-100 candidates from `candidates.jsonl` against the
 "Senior AI Engineer — Founding Team" job description, with explainable reasoning.
 
 ## Why this is not a pure-embedding system
+
 The dataset is built so keyword/embedding-only approaches fail: keyword-stuffers
-and ~80 impossible "honeypot" profiles would rank high. We use a **hybrid,
-mostly-deterministic scorer** that reads profiles structurally (title & career
-trajectory dominate), trust-weights skills, applies a behavioral-availability
-modifier, hard-penalizes the JD's explicit disqualifiers, and uses a small
-local embedding model only as a "plain-language fit" catcher.
+(non-technical titles with every AI skill listed) and ~80 impossible "honeypot"
+profiles would rank high. We use a **hybrid, mostly-deterministic scorer** that
+reads profiles structurally — title & career trajectory dominate, skills are
+*trust-weighted* by endorsements/duration/assessment, a behavioral modifier
+captures availability, hard penalties encode the JD's explicit do-not-wants, and
+a high-precision consistency check forces honeypots to the bottom. A small
+**local** embedding pass (precomputed offline) sharpens top-band ordering.
 
-## Layout
-- `src/loader.py`   — load the pool (.json / .jsonl / .jsonl.gz), stdlib only
-- `src/honeypots.py`— high-precision profile-consistency / honeypot detector
-- `src/eda.py`      — characterize the full pool; sanity-check honeypot rate
-- `tests/`          — precision/recall tests for the detector
-- (coming) `src/features.py`, `src/score.py`, `src/reason.py`, `rank.py`
+## Reproduce the submission
 
-## Reproduce
+**One-time offline precompute** (builds semantic embeddings; may exceed 5 min —
+that's allowed, it is not the ranking step):
 
-Optional one-time OFFLINE precompute of semantic embeddings (improves top-band
-ordering; ranking still works without it):
-```
-pip install sentence-transformers
+```bash
+pip install -r requirements.txt
+pip install sentence-transformers          # precompute-only dependency
 python src/precompute_embeddings.py --candidates ./data/candidates.jsonl
 ```
 
-Ranking step (the single reproduce command; offline, CPU-only, <5 min):
-```
+**Ranking step** — the single reproduce command (offline, CPU-only, ~25s, <16GB):
+
+```bash
 python rank.py --candidates ./data/candidates.jsonl --out ./submission.csv
 python validate_submission.py submission.csv
 ```
-If the embedding artifacts are absent, rank.py automatically runs the pure
-deterministic system (still valid + honeypot-clean).
 
-## Status
-- [x] Phase 0–1: loader, honeypot detector (0 FP on sample, catches synthetic), EDA
-- [x] Phase 2: deterministic core scorer (features, score, reason, rank.py) -> valid CSV
-- [x] Phase 3: invariant harness, notice-period factor, semantic re-ranking (precompute + optional blend)
-- [ ] Phase 4: reasoning polish | Phase 5: sandbox + repro hardening
-- [ ] Phase 4: reasoning generation
-- [ ] Phase 5: reproducibility + sandbox
+If the embedding artifacts are absent, `rank.py` automatically runs the pure
+deterministic system (still valid, still honeypot-clean) — so the submission is
+reproducible even without the precompute.
+
+## Hosted sandbox (demo)
+
+A Streamlit app runs the ranker on a small sample and shows the per-component
+explanation. Run locally with `streamlit run app.py`, or deploy free:
+
+- **HuggingFace Spaces:** create a Space (SDK: *Streamlit*), push this repo; it
+  auto-installs `requirements.txt` and runs `app.py`.
+- **Streamlit Cloud:** point it at this repo, main file `app.py`.
+
+## Project layout
+
+```
+rank.py                      single reproduce command -> submission.csv
+app.py                       hosted sandbox demo (Streamlit)
+src/loader.py                stdlib-only reader for .json/.jsonl/.jsonl.gz
+src/features.py              JD-derived taxonomies + feature extraction
+src/score.py                 5-component scorer + behavioral modifier + penalties
+src/reason.py                fact-grounded, varied, rank-consistent reasoning
+src/honeypots.py             high-precision profile-consistency / honeypot detector
+src/precompute_embeddings.py OFFLINE: build MiniLM embedding artifacts
+src/semantic.py              ranking-time semantic re-rank (numpy only, no model)
+src/eda.py                   pool characterization
+tests/                       honeypot precision/recall + 10 JD ranking invariants
+submission_metadata.yaml     portal metadata mirror
+```
+
+## How we validated without a leaderboard
+
+No public leaderboard + a 3-submission cap means we validate by methodology, not
+by submitting variants. `tests/test_invariants.py` encodes 10 ranking rules taken
+directly from the JD (keyword-stuffer < real ML engineer; inactive < active twin;
+long-notice < short-notice; services-only < product; honeypot crushed; etc.) and
+runs as a regression suite on every change.
+
+```bash
+python tests/test_honeypots.py
+python tests/test_invariants.py
+```
+
+## Compute profile
+
+- Ranking step: ~25s wall-clock over 100,000 candidates, CPU-only, no network.
+- Peak memory well under 16 GB (embeddings artifact ~154 MB + parsed records).
+- Honeypots in top 100: 0.

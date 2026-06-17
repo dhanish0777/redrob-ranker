@@ -1,0 +1,89 @@
+# Redrob Hackathon — Submission Metadata
+# Mirror these values in the upload portal. Fill the <ANGLE-BRACKET> placeholders.
+
+# ============================================================================
+# Team identity   <-- FILL THESE IN
+# ============================================================================
+team_name: "<your-team-name>"
+
+primary_contact:
+  name: "<Your Full Name>"
+  email: "<your-email@example.com>"
+  phone: "<+91-XXXXXXXXXX>"
+
+team_members:
+  - name: "<Your Full Name>"
+    email: "<your-email@example.com>"
+    role: "ML Engineer"
+  # Add teammates here, or leave just yourself if solo.
+
+# ============================================================================
+# Code and reproducibility   <-- FILL the repo + sandbox URLs after you create them
+# ============================================================================
+github_repo: "https://github.com/<your-username>/redrob-ranker"
+
+sandbox_link: "https://huggingface.co/spaces/<your-username>/redrob-ranker-demo"
+
+reproduce_command: "python rank.py --candidates ./data/candidates.jsonl --out ./submission.csv"
+# One-time prerequisite (offline, outside the 5-min window) -- see README:
+#   python src/precompute_embeddings.py --candidates ./data/candidates.jsonl
+
+# ============================================================================
+# Compute environment   <-- adjust to YOUR machine (run `python --version`, check RAM)
+# ============================================================================
+compute:
+  platform: "<e.g. Windows 11 laptop / your machine>"
+  cpu_cores: 8
+  ram_gb: 16
+  python_version: "<run: python --version>"
+  os: "<e.g. Windows 11>"
+  uses_gpu_for_inference: false          # ranking is CPU-only
+  has_network_during_ranking: false      # ranking makes no network calls
+  pre_computation_required: true         # we precompute MiniLM embeddings offline
+  pre_computation_time_minutes: 10       # <-- set to what YOUR precompute run took
+
+# ============================================================================
+# AI tools declaration (transparency only; honest declaration is not penalized)
+# ============================================================================
+ai_tools_used:
+  - "Claude"     # architecture, code authoring, code review, data analysis
+  - "Gemini"     # via the Antigravity IDE's agent/assistant
+  # Remove any you did not use; add others (Copilot/Cursor/ChatGPT) if used.
+
+ai_usage_summary: |
+  Built with AI assistance for architecture design, code authoring, and review,
+  iterated by the team. A SMALL sample of candidate records (the first ~50 from
+  the public bundle) was shared with the assistant for data analysis and to
+  design the scoring taxonomies; the full candidate pool was processed only
+  locally. The ranking pipeline itself makes NO LLM or network calls of any
+  kind -- it is a deterministic feature scorer plus a re-ranking pass over
+  locally precomputed sentence-transformer embeddings.
+
+# ============================================================================
+# Approach summary
+# ============================================================================
+methodology_summary: |
+  Hybrid, mostly-deterministic ranker with explicit reasoning. Five JD-aligned
+  components -- role/career-trajectory (recency-weighted), trust-weighted skills
+  (endorsements + duration + assessment scores defeat keyword stuffing),
+  experience band, location, nice-to-haves -- combined with a multiplicative
+  behavioral-availability modifier (open-to-work, last-active recency, recruiter
+  response, notice period) and hard penalties for the JD's explicit do-not-wants
+  (services-only careers, CV/speech without NLP/IR, LLM-wrapper-only, title-
+  chasing). A high-precision profile-consistency check forces impossible
+  "honeypot" profiles to the bottom. The role/title gate is the decisive defense
+  against keyword-stuffer traps; an optional re-ranking pass over locally
+  precomputed all-MiniLM-L6-v2 embeddings sharpens top-band ordering and catches
+  plain-language fits. Validated against 10 JD-derived ranking invariants in lieu
+  of a leaderboard. Ranking runs in ~25s over 100K candidates on CPU; 0 honeypots
+  in top 100.
+
+# ============================================================================
+# Declarations
+# ============================================================================
+declarations:
+  read_submission_spec: true
+  code_is_original_work: true
+  no_collusion: true
+  honeypot_check_done: true          # we explicitly detect + down-rank honeypots
+  reproduction_tested: true

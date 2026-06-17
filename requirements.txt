@@ -1,7 +1,10 @@
 # --- Ranking step (rank.py): minimal, fast, offline, CPU-only ---
 numpy>=1.24
 
-# --- Offline precompute only (src/precompute_embeddings.py) ---
+# --- Hosted sandbox demo (app.py) ---
+streamlit>=1.30
+
+# --- Offline precompute ONLY (src/precompute_embeddings.py) ---
 # NOT imported by the ranking step. Install separately to (re)build embeddings:
 #   pip install sentence-transformers
 # sentence-transformers>=2.2
