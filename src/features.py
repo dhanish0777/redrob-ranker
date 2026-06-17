@@ -90,14 +90,20 @@ def role_relevance(title: str) -> float:
       * ML-qualified variants ('(ml)', 'machine learning') at the top tier, so
         'Senior Software Engineer (ML)' scores as the ML engineer it is;
       * research titles at 0.85 ('tilt toward shipper', per the JD);
-    so no extra adjustment is applied here.
+    plus a mild 'junior' demotion (x0.90) since this is a senior role.
     """
     padded = f" {(title or '').lower()} "
     best = None
     for score, phrases in ROLE_TIERS.items():
         if any(_phrase_matches(p, padded) for p in phrases):
             best = score if best is None else max(best, score)
-    return best if best is not None else 0.25
+    if best is None:
+        best = 0.25
+    # Mild 'junior' demotion: a junior title is a mismatch for a SENIOR founding
+    # role. We trust title as a primary signal, so we trust its seniority marker.
+    if _phrase_matches("junior", padded):
+        best *= 0.90
+    return best
 
 
 # ---------------------------------------------------------------------------

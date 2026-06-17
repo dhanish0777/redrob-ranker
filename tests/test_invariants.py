@@ -159,6 +159,13 @@ def test_experience_band():
     print("ok: 7-yr reference outranks 1-yr and 20-yr versions")
 
 
+def test_junior_below_senior_twin():
+    """Senior role: a 'Junior' title should rank below an identical non-junior one."""
+    junior = mut(**{"profile.current_title": "Junior ML Engineer"})
+    assert _s(junior) < _s(BASE), "junior title not demoted vs senior twin"
+    print("ok: 'Junior ML Engineer' ranks below identical ML Engineer")
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for t in tests:
