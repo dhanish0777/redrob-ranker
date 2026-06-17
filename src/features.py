@@ -43,7 +43,15 @@ ROLE_TIERS = {
            "applied ml", "applied scientist", "applied ai",
            "recommendation systems", "recommender", "search engineer",
            "nlp engineer", "information retrieval", "ranking",
-           "research engineer", "ml scientist", "data scientist"],
+           "ml scientist", "data scientist",
+           # ML-qualified variants of otherwise-generic titles, e.g.
+           # "Senior Software Engineer (ML)" / "...(Machine Learning)".
+           "machine learning", "(ml)"],
+    # Research-flavored titles: the JD wants applied/shipper over researcher
+    # ("tilt slightly toward shipper") and hard-disqualifies pure-research-
+    # without-production. We keep them eligible but rank just below the applied
+    # ML roles. NOT a penalty -- a mild relevance demotion.
+    0.85: ["research engineer", "research scientist"],
     # Strong adjacent: technical builders who plausibly have retrieval/ranking
     # exposure and match the "shipper" attitude. JD's v2 audit started from
     # "BM25 + rule-based", so data/backend folks who built search are in scope.
@@ -63,12 +71,31 @@ ROLE_TIERS = {
 }
 
 
+def _phrase_matches(phrase: str, padded_title: str) -> bool:
+    """
+    Word-boundary-aware match. We pad the title with spaces and match space-
+    delimited phrases, so 'search engineer' does NOT match inside 're·search
+    engineer' (a real bug we hit). Phrases containing punctuation like '(ml)'
+    are matched as plain substrings since the punctuation already disambiguates.
+    """
+    if any(ch in phrase for ch in "()/.-"):
+        return phrase in padded_title
+    return f" {phrase} " in padded_title
+
+
 def role_relevance(title: str) -> float:
-    """Highest matching tier for a title; default 0.25 for unknown technical-ish."""
-    t = (title or "").lower()
+    """
+    Relevance of a title to the JD's applied-ML/retrieval target, in [0,1].
+    Word-boundary matching against ROLE_TIERS. The tier table already encodes:
+      * ML-qualified variants ('(ml)', 'machine learning') at the top tier, so
+        'Senior Software Engineer (ML)' scores as the ML engineer it is;
+      * research titles at 0.85 ('tilt toward shipper', per the JD);
+    so no extra adjustment is applied here.
+    """
+    padded = f" {(title or '').lower()} "
     best = None
     for score, phrases in ROLE_TIERS.items():
-        if any(p in t for p in phrases):
+        if any(_phrase_matches(p, padded) for p in phrases):
             best = score if best is None else max(best, score)
     return best if best is not None else 0.25
 
