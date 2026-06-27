@@ -1,14 +1,7 @@
 """
 eda.py
 ======
-Run this on the FULL pool to understand what we're ranking and to sanity-check
-our honeypot detector against reality (the spec says ~80 honeypots in 100K, so
-our flagged rate should be small -- well under the 10% disqualification bar).
-
-    python src/eda.py data/candidates.jsonl.gz
-
-It prints, not plots, on purpose: zero extra deps, runs anywhere, and the
-numbers are what we actually reason about.
+Exploratory data analysis script.
 """
 
 from __future__ import annotations

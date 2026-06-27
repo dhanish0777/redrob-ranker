@@ -1,28 +1,8 @@
 #!/usr/bin/env python3
 """
-precompute_embeddings.py  (OFFLINE step -- not part of the 5-minute ranking budget)
-===================================================================================
-Encodes each candidate's meaningful text and the JD into a small local
-sentence-transformer, saving normalized vectors as numpy artifacts. The ranking
-step (rank.py) then loads ONLY these .npy files + numpy -- it never runs a model
-and never touches the network, so it stays fast and within the compute rules.
-
-    python src/precompute_embeddings.py --candidates ./data/candidates.jsonl
-
-Produces in ./artifacts/:
-    candidate_embeddings.npy   (N x 384, float32, L2-normalized)
-    candidate_ids.json         (row-aligned candidate_id list)
-    jd_embedding.npy           (384,) the JD query vector
-    embed_meta.json            (model name + JD text used, for reproducibility)
-
-Model: all-MiniLM-L6-v2 -- 384-dim, ~80 MB, CPU-friendly, widely benchmarked.
-
-WHY THIS TEXT: career-history *descriptions* in this dataset are partly noisy,
-but a genuinely-ML candidate's headline + summary + role titles + descriptions
-read ML end-to-end, while a keyword-stuffer's read non-technical with AI words
-only bolted onto the skills list -- so the JD similarity separates them. This
-is our catcher for the "plain-language Tier 5" the JD describes (someone who
-built a recommendation system but never wrote 'RAG' or 'Pinecone').
+precompute_embeddings.py
+========================
+Precomputes embeddings for candidates.
 """
 
 from __future__ import annotations
@@ -40,8 +20,7 @@ ARTIFACT_DIR = os.path.join(
 )
 MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
-# Curated JD query: the essence of job_description.md's "absolutely need" +
-# "ideal candidate", phrased as the target profile we want to match against.
+# Curated JD query.
 JD_QUERY = (
     "Senior AI engineer at a product company who owns the ranking, retrieval "
     "and matching intelligence layer. Production experience with embeddings-"
@@ -72,7 +51,7 @@ def main():
     ap.add_argument("--batch", type=int, default=128)
     args = ap.parse_args()
 
-    # Imported here so the ranking step never pulls these heavy deps.
+    # Lazy imports.
     import numpy as np
     from sentence_transformers import SentenceTransformer
 
