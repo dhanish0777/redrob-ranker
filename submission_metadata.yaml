@@ -4,25 +4,25 @@
 # ============================================================================
 # Team identity   <-- FILL THESE IN
 # ============================================================================
-team_name: "<your-team-name>"
+team_name: "VIP"
 
 primary_contact:
-  name: "<Your Full Name>"
-  email: "<your-email@example.com>"
-  phone: "<+91-XXXXXXXXXX>"
+  name: "Harikrishnan T"
+  email: "hk263895@gmail.com"
+  phone: "8281116219"
 
 team_members:
-  - name: "<Your Full Name>"
-    email: "<your-email@example.com>"
+  - name: "Prakash Roy"
+    email: "prakashroy1211@gmail.com"
     role: "ML Engineer"
   # Add teammates here, or leave just yourself if solo.
 
 # ============================================================================
 # Code and reproducibility   <-- FILL the repo + sandbox URLs after you create them
 # ============================================================================
-github_repo: "https://github.com/<your-username>/redrob-ranker"
+github_repo: "https://github.com/dhanish0777/redrob-ranker"
 
-sandbox_link: "https://huggingface.co/spaces/<your-username>/redrob-ranker-demo"
+sandbox_link: "sandbox link:https://huggingface.co/spaces/Harikrish07/redrob-ranker-demo"
 
 reproduce_command: "python rank.py --candidates ./data/candidates.jsonl --out ./submission.csv"
 # One-time prerequisite (offline, outside the 5-min window) -- see README:
