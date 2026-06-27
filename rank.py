@@ -1,18 +1,6 @@
 #!/usr/bin/env python3
 """
 rank.py — produce the top-100 submission CSV.
-
-    python rank.py --candidates ./data/candidates.jsonl.gz --out ./submission.csv
-
-This is the SINGLE reproduce command (spec 10.3). It must run offline, CPU-only,
-within 5 minutes and 16 GB. The deterministic scorer here is fast (pure Python
-over parsed dicts); the optional semantic layer (Phase 3) loads a PRE-COMPUTED
-numpy artifact rather than running a model, so the ranking step stays cheap.
-
-Tie-break handling (matches validate_submission.py exactly): scores are rounded
-FIRST, then we sort by (-rounded_score, candidate_id). That guarantees equal
-rounded scores always appear in ascending candidate_id order, which the
-validator requires; sorting before rounding could otherwise violate it.
 """
 
 from __future__ import annotations
@@ -43,20 +31,19 @@ def rank(candidates_path: str, out_path: str, top_n: int = TOP_N,
 
     scored = [score_candidate(c) for c in cands]
 
-    # Optional semantic re-ranking pass (active only if artifacts precomputed).
+    # Semantic re-ranking pass
     sem = SemanticIndex()
     if sem.is_available():
         for s in scored:
             s["sem_pct"] = sem.percentile(s["candidate_id"])
-            # Honeypots stay crushed -- don't let semantics rescue them.
+            # Don't let semantics rescue honeypots
             if not s["is_honeypot"]:
                 s["score"] = blend(s["score"], s["sem_pct"], alpha)
         print(f"Semantic re-ranking ACTIVE (alpha={alpha})")
     else:
         print("Semantic re-ranking inactive (no artifacts) -- deterministic only")
 
-    # Round scores BEFORE tie-breaking so the validator's "equal score ->
-    # ascending candidate_id" rule always holds.
+    # Round scores before tie-breaking
     for s in scored:
         s["score"] = round(float(s["score"]), SCORE_DECIMALS)
 

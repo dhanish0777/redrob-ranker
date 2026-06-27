@@ -1,28 +1,7 @@
 """
 features.py
 ===========
-Turns a raw candidate dict into the signals the JD actually cares about.
-
-Everything here is traceable to a specific line in job_description.md. The
-taxonomies are constants at the top so they're easy to read, defend, and tune.
-
-The JD's structure gives us a rubric:
-  - "Things you absolutely need": embeddings retrieval, vector DB / hybrid
-    search, strong Python, ranking-evaluation frameworks (NDCG/MRR/MAP).
-  - "Things we'd like": LoRA/QLoRA/PEFT, learning-to-rank, HR-tech, distsys,
-    open source.
-  - "Things we explicitly do NOT want": consulting-only careers, CV/speech/
-    robotics primary without NLP/IR, research-only, recent LangChain wrappers,
-    title-chasers.
-  - Behavioral: availability matters (open_to_work, recency, response rate).
-
-A KEY DATA OBSERVATION (verified, defensible): career_history *descriptions*
-in this dataset are partially scrambled relative to the role's title -- e.g.
-a "Marketing Manager" entry can carry a mechanical-engineering paragraph. So
-we trust, in order: (1) titles, (2) the self-written summary, (3) skills
-(trust-weighted), and we let the Phase-3 semantic layer mine descriptions for
-plain-language evidence wherever it genuinely appears. Titles + summary are
-internally coherent per candidate; raw description keywords are not.
+Extracts features from raw candidate data.
 """
 
 from __future__ import annotations
@@ -32,37 +11,26 @@ from datetime import date
 
 REFERENCE_DATE = date(2026, 6, 1)
 
-# ---------------------------------------------------------------------------
-# 1. ROLE / TITLE taxonomy  (the decisive anti-keyword-stuffer signal)
-#    The JD wants applied-ML / retrieval / ranking people. A title is matched
-#    by checking whether any of these phrases appear in it (lowercased).
-# ---------------------------------------------------------------------------
+# Role taxonomy.
 ROLE_TIERS = {
-    # Bullseye: exactly the JD's target archetype.
+    # Target archetype.
     1.00: ["machine learning engineer", "ml engineer", "ai engineer",
            "applied ml", "applied scientist", "applied ai",
            "recommendation systems", "recommender", "search engineer",
            "nlp engineer", "information retrieval", "ranking",
            "ml scientist", "data scientist",
-           # ML-qualified variants of otherwise-generic titles, e.g.
-           # "Senior Software Engineer (ML)" / "...(Machine Learning)".
+           # ML-qualified variants.
            "machine learning", "(ml)"],
-    # Research-flavored titles: the JD wants applied/shipper over researcher
-    # ("tilt slightly toward shipper") and hard-disqualifies pure-research-
-    # without-production. We keep them eligible but rank just below the applied
-    # ML roles. NOT a penalty -- a mild relevance demotion.
+    # Research-flavored titles.
     0.85: ["research engineer", "research scientist"],
-    # Strong adjacent: technical builders who plausibly have retrieval/ranking
-    # exposure and match the "shipper" attitude. JD's v2 audit started from
-    # "BM25 + rule-based", so data/backend folks who built search are in scope.
+    # Strong adjacent roles.
     0.65: ["data engineer", "backend engineer", "software engineer",
            "platform engineer", "full stack", "fullstack", "analytics engineer"],
-    # Weak technical: real engineers but far from NLP/IR; would be re-learning.
+    # Weak technical roles.
     0.30: ["frontend", "front end", "mobile developer", "devops",
            "site reliability", "sre", "qa engineer", "test engineer",
            "cloud engineer", ".net developer", "java developer"],
-    # Non-technical / wrong domain: the keyword-stuffer carriers. A perfect
-    # skill list cannot lift these (JD: "title is Marketing Manager -> not a fit").
+    # Non-technical roles.
     0.00: ["marketing manager", "operations manager", "accountant",
            "hr manager", "human resources", "business analyst",
            "project manager", "program manager", "customer support",
@@ -72,26 +40,14 @@ ROLE_TIERS = {
 
 
 def _phrase_matches(phrase: str, padded_title: str) -> bool:
-    """
-    Word-boundary-aware match. We pad the title with spaces and match space-
-    delimited phrases, so 'search engineer' does NOT match inside 're·search
-    engineer' (a real bug we hit). Phrases containing punctuation like '(ml)'
-    are matched as plain substrings since the punctuation already disambiguates.
-    """
+    """Word-boundary-aware phrase match."""
     if any(ch in phrase for ch in "()/.-"):
         return phrase in padded_title
     return f" {phrase} " in padded_title
 
 
 def role_relevance(title: str) -> float:
-    """
-    Relevance of a title to the JD's applied-ML/retrieval target, in [0,1].
-    Word-boundary matching against ROLE_TIERS. The tier table already encodes:
-      * ML-qualified variants ('(ml)', 'machine learning') at the top tier, so
-        'Senior Software Engineer (ML)' scores as the ML engineer it is;
-      * research titles at 0.85 ('tilt toward shipper', per the JD);
-    plus a mild 'junior' demotion (x0.90) since this is a senior role.
-    """
+    """Calculate role relevance [0,1]."""
     padded = f" {(title or '').lower()} "
     best = None
     for score, phrases in ROLE_TIERS.items():
@@ -99,19 +55,15 @@ def role_relevance(title: str) -> float:
             best = score if best is None else max(best, score)
     if best is None:
         best = 0.25
-    # Mild 'junior' demotion: a junior title is a mismatch for a SENIOR founding
-    # role. We trust title as a primary signal, so we trust its seniority marker.
+    # Junior title demotion.
     if _phrase_matches("junior", padded):
         best *= 0.90
     return best
 
 
-# ---------------------------------------------------------------------------
-# 2. SKILL taxonomy  (matched case-insensitively, substring-aware)
-#    Weights reflect the JD's own "absolutely need / like / do not want" split.
-# ---------------------------------------------------------------------------
+# Skill taxonomy.
 SKILL_WEIGHTS = {
-    # CORE: embeddings retrieval + vector/hybrid search + IR/ranking + eval.
+    # Core skills.
     "embeddings": 1.0, "sentence transformers": 1.0, "sentence-transformers": 1.0,
     "bge": 1.0, "e5": 1.0, "faiss": 1.0, "pinecone": 1.0, "qdrant": 1.0,
     "weaviate": 1.0, "milvus": 1.0, "opensearch": 1.0, "elasticsearch": 1.0,
@@ -119,44 +71,36 @@ SKILL_WEIGHTS = {
     "bm25": 0.9, "hugging face transformers": 0.9, "transformers": 0.7,
     "learning to rank": 1.0, "ranking": 0.9, "retrieval": 0.9,
     "ndcg": 1.0, "mrr": 1.0, "map": 0.6, "a/b testing": 0.8,
-    # STRONG ML: the general applied-ML stack the JD assumes underneath.
+    # Strong ML skills.
     "machine learning": 0.7, "nlp": 0.7, "scikit-learn": 0.6, "sklearn": 0.6,
     "xgboost": 0.7, "lightgbm": 0.7, "pytorch": 0.6, "tensorflow": 0.5,
     "mlops": 0.6, "mlflow": 0.6, "feature engineering": 0.6, "kubeflow": 0.5,
     "python": 0.5, "spark": 0.3, "airflow": 0.3, "bentoml": 0.4,
-    # NICE-TO-HAVE (JD "would like"): small positive.
+    # Nice-to-have skills.
     "lora": 0.4, "qlora": 0.4, "peft": 0.4, "fine-tuning llms": 0.4,
     "fine-tuning": 0.35,
-    # AMBIGUOUS: prompt/LangChain are positive only in small dose; heavy
-    # reliance is a NEGATIVE per the JD ("recent LangChain wrappers"). Handled
-    # in score.py as a penalty when they're the *primary* AI signal.
+    # Ambiguous skills.
     "prompt engineering": 0.15, "langchain": 0.1, "llamaindex": 0.1,
-    # NEGATIVE for THIS role: CV/speech/robotics primary (JD explicit).
+    # Negative skills.
     "image classification": -0.3, "speech recognition": -0.3, "tts": -0.3,
     "gans": -0.2, "object detection": -0.3, "opencv": -0.3,
     "computer vision": -0.3, "cnn": -0.15, "image segmentation": -0.3,
 }
 
-# Skills that mark CV/speech/robotics specialization (for the explicit penalty).
+# CV/speech skills.
 CV_SPEECH_SKILLS = {
     "image classification", "speech recognition", "tts", "gans",
     "object detection", "opencv", "computer vision", "image segmentation",
     "cnn", "face recognition", "pose estimation",
 }
-# Skills that count as NLP/IR exposure (cancels the CV/speech penalty per JD:
-# "...without significant NLP/IR exposure").
+# NLP/IR skills.
 NLP_IR_SKILLS = {
     "nlp", "information retrieval", "embeddings", "sentence transformers",
     "bm25", "retrieval", "semantic search", "hugging face transformers",
     "transformers", "ranking", "learning to rank",
 }
 
-# ---------------------------------------------------------------------------
-# 3. COMPANY classification: services/consulting vs product.
-#    JD: "People who have only worked at consulting firms ... in their entire
-#    career" is a do-not-want, BUT current consulting is fine with prior
-#    product experience. So we need 'is there ANY product role in history'.
-# ---------------------------------------------------------------------------
+# Services companies list.
 SERVICES_COMPANIES = {
     "tcs", "tata consultancy", "infosys", "wipro", "accenture", "cognizant",
     "capgemini", "tech mahindra", "hcl", "mindtree", "ltimindtree", "mphasis",
@@ -168,14 +112,11 @@ def is_services_company(company: str, industry: str) -> bool:
     c = (company or "").lower()
     if any(s in c for s in SERVICES_COMPANIES):
         return True
-    # Industry "IT Services" is a softer services signal.
+    # Check industry.
     return (industry or "").strip().lower() == "it services"
 
 
-# ---------------------------------------------------------------------------
-# 4. LOCATION: JD prefers Pune/Noida; Hyderabad/Mumbai/Delhi NCR welcome;
-#    outside India case-by-case with no visa sponsorship.
-# ---------------------------------------------------------------------------
+# Location lists.
 PREFERRED_CITIES = ["pune", "noida"]
 WELCOME_CITIES = ["hyderabad", "mumbai", "delhi", "ncr", "gurgaon", "gurugram",
                   "bangalore", "bengaluru", "chennai"]
@@ -190,13 +131,11 @@ def location_score(profile: dict, willing_to_relocate: bool) -> float:
         if any(c in loc for c in WELCOME_CITIES):
             return 0.85
         return 0.7 if willing_to_relocate else 0.55
-    # Outside India: no visa sponsorship; only viable if willing to relocate.
+    # Check outside India.
     return 0.45 if willing_to_relocate else 0.2
 
 
-# ---------------------------------------------------------------------------
-# Helpers used by score.py
-# ---------------------------------------------------------------------------
+# Helpers
 def months_inactive(last_active: str) -> float:
     try:
         y, m, d = (int(x) for x in last_active.split("-"))
@@ -207,7 +146,7 @@ def months_inactive(last_active: str) -> float:
 
 
 def short_tenure_fraction(history: list[dict]) -> float:
-    """Fraction of *completed* roles shorter than 18 months -> job-hopping tell."""
+    """Calculate short tenure fraction."""
     completed = [r for r in history if not r.get("is_current")]
     if not completed:
         return 0.0

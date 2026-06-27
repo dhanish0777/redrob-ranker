@@ -1,15 +1,7 @@
 """
 reason.py
 =========
-Generates the 1-2 sentence `reasoning` for each ranked candidate.
-
-Stage 4 samples 10 rows and checks: specific facts, JD connection, honest
-concerns, NO hallucination, variation, and rank-consistency. So every clause
-here is built ONLY from fields actually present in the candidate's profile,
-the tone scales with the score, and we surface real concerns rather than
-generic praise. We assemble from a pool of phrasings keyed to which signals
-actually dominate, which keeps the 100 reasonings genuinely varied instead of
-a name-swapped template.
+Generates the reasoning string for ranked candidates.
 """
 
 from __future__ import annotations
@@ -59,7 +51,7 @@ def _strength_clause(cand: dict, scored: dict) -> str:
     company = _product_company(cand)
     at = f" at {company}" if company else ""
 
-    # Top tier: rotate among equivalent phrasings (keyed to id) so 100 rows vary.
+    # Rotate among equivalent phrasings for top tier.
     if comp["role"] >= 0.9 and core:
         sk = ", ".join(core)
         variants = [

@@ -1,14 +1,5 @@
 """
-app.py — hosted sandbox demo (HuggingFace Spaces / Streamlit Cloud).
-
-Satisfies submission_spec 10.5: accepts a small candidate sample (pre-loaded or
-uploaded, <=100), runs the ranking end-to-end on CPU within the budget, and
-shows the ranked output WITH the per-component explanation that makes this
-system defensible. The demo runs the deterministic core (no torch needed, so it
-boots fast on a free Space); the full pipeline adds an offline-precomputed
-semantic re-rank, noted below.
-
-Run locally:   streamlit run app.py
+app.py — hosted sandbox demo for the candidate ranker.
 """
 
 import json
