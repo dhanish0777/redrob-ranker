@@ -22,7 +22,7 @@ st.caption(
     "adds an offline-precomputed semantic re-ranking pass (see README)."
 )
 
-SAMPLE = os.path.join(os.path.dirname(__file__), "data", "sample_candidates.json")
+SAMPLE = os.path.join(os.path.dirname(__file__), "data", "data/candidates.jsonl")
 
 
 def load_records(upload):
